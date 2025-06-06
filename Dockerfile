@@ -1,34 +1,25 @@
 FROM almalinux:9
 
-# Install dependencies and Remi repository for PHP 7.4
-RUN dnf -y install epel-release && \
-    dnf -y install https://rpms.remirepo.net/enterprise/remi-release-9.rpm && \
-    dnf -y module reset php && \
-    dnf -y module enable php:remi-7.4 && \
-    dnf -y install php php-mysqlnd php-mbstring php-xml php-opcache git nano sudo && \
+# Install PHP 7.4 and web stack via Remi
+RUN dnf install -y epel-release && \
+    dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm && \
+    dnf module reset php -y && \
+    dnf module enable php:remi-7.4 -y && \
+    dnf install -y php php-fpm php-mysqlnd nginx sudo procps-ng nano git expect && \
     dnf clean all
 
-# Create user 'son' with sudo privileges
-RUN useradd -m -s /bin/bash son && \
-    echo "son ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/son && \
-    chmod 0440 /etc/sudoers.d/son
+# Configure PHP-FPM to use Unix socket
+RUN sed -i 's|;listen.owner = nobody|listen.owner = nginx|' /etc/php-fpm.d/www.conf && \
+    sed -i 's|;listen.group = nobody|listen.group = nginx|' /etc/php-fpm.d/www.conf && \
+    sed -i 's|;listen.mode = 0660|listen.mode = 0660|' /etc/php-fpm.d/www.conf && \
+    sed -i 's|^listen.acl_users *=.*|;listen.acl_users = apache,nginx|' /etc/php-fpm.d/www.conf
 
 # Set working directory
-WORKDIR /home/son/workspace
+WORKDIR /workspace
 
-# Copy the project folder (context is the parent directory)
-COPY . .
+# Copy project + configuration
+COPY . /workspace
+COPY default.conf /etc/nginx/conf.d/default.conf
 
-# Copy and make the startup script executable
-COPY start.sh /usr/local/bin/start.sh
-RUN chmod +x /usr/local/bin/start.sh
-
-# Set permissions
-RUN chown -R son:son /home/son/workspace && \
-    chmod -R 755 /home/son/workspace
-
-# Expose port 80
-EXPOSE 80
-
-# Use JSON array syntax for CMD
-CMD ["/usr/local/bin/start.sh"]
+# Make startup script executable
+COPY run.sh /workspace/run.sh
