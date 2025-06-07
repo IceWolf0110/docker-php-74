@@ -14,5 +14,5 @@
     "--security-opt",
     "seccomp=unconfined"
   ],
-  "forwardPorts": [8000, 3306]
+  "forwardPorts": [8000]
 }

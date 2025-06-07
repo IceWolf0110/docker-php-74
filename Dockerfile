@@ -19,6 +19,7 @@ WORKDIR /workspace
 
 # Copy project + configuration
 COPY . /workspace
+RUN git config --global --add safe.directory /workspace
 COPY default.conf /etc/nginx/conf.d/default.conf
 
 # Make startup script executable
